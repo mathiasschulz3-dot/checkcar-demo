@@ -1,4 +1,8 @@
-// ChecklistGenerator.jsx - Updated with Auto-Closing Payment Modal
+// ChecklistGenerator.jsx - COMPLETE FIX
+// ✅ Modal stays open during processing
+// ✅ Checkboxes for on-site inspection
+// ✅ Proper UX flow
+
 import { useState } from 'react';
 
 export default function ChecklistGenerator() {
@@ -9,6 +13,7 @@ export default function ChecklistGenerator() {
   const [error, setError] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [checkedItems, setCheckedItems] = useState({});
 
   // Generate Free Lite Check
   const handleGenerateLite = async () => {
@@ -21,6 +26,7 @@ export default function ChecklistGenerator() {
     setError(null);
     setLiteChecklist(null);
     setPremiumChecklist(null);
+    setCheckedItems({});
 
     try {
       const response = await fetch('/api/generate-checklist', {
@@ -45,12 +51,13 @@ export default function ChecklistGenerator() {
     }
   };
 
-  // Handle Premium Upgrade
+  // ✅ FIXED: Handle Premium Upgrade with proper UX
   const handlePremiumUpgrade = async () => {
     setIsProcessingPayment(true);
+    setError(null);
     
     try {
-      // Simulate payment processing (replace with real payment logic)
+      // Simulate payment processing (replace with Stripe/PayPal)
       await new Promise(resolve => setTimeout(resolve, 1500));
       
       // Generate Premium Checklist
@@ -70,14 +77,25 @@ export default function ChecklistGenerator() {
       const data = await response.json();
       setPremiumChecklist(data);
       
-      // ✅ FIX: Auto-close modal after successful payment
-      setIsProcessingPayment(false);
-      setShowPaymentModal(false);
+      // ✅ SUCCESS: Close modal AFTER data is loaded
+      setTimeout(() => {
+        setIsProcessingPayment(false);
+        setShowPaymentModal(false);
+      }, 500);
       
     } catch (err) {
       setError(err.message);
       setIsProcessingPayment(false);
+      // Don't close modal on error
     }
+  };
+
+  // ✅ NEW: Toggle checkbox for inspection items
+  const toggleCheckbox = (itemId) => {
+    setCheckedItems(prev => ({
+      ...prev,
+      [itemId]: !prev[itemId]
+    }));
   };
 
   const getRiskColor = (risk) => {
@@ -103,10 +121,10 @@ export default function ChecklistGenerator() {
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          🚗 CheckCar AI
+          🚗 CheckCar
         </h1>
         <p className="text-gray-600">
-          AI-Powered Used Car Inspection Checklists
+          AI-Powered Used Car Inspection
         </p>
       </div>
 
@@ -142,6 +160,16 @@ export default function ChecklistGenerator() {
             '✓ Generate Free Lite Check'
           )}
         </button>
+
+        {/* Examples */}
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-xs font-semibold text-blue-900 mb-2">💡 Examples:</p>
+          <div className="space-y-1 text-xs text-blue-800">
+            <div>• BMW 3 Series E90, Year 2010, Petrol, 180,000 km</div>
+            <div>• Audi A4 B8, Year 2012, TDI, 200,000 km</div>
+            <div>• Mercedes C-Class W204, Year 2011, 150,000 km</div>
+          </div>
+        </div>
       </div>
 
       {/* Error Display */}
@@ -169,6 +197,9 @@ export default function ChecklistGenerator() {
               <p className="text-2xl font-bold text-green-700">
                 €{liteChecklist.priceEstimate.min.toLocaleString()} - €{liteChecklist.priceEstimate.max.toLocaleString()}
               </p>
+              <p className="text-sm text-green-700 mt-1">
+                Average: €{liteChecklist.priceEstimate.average.toLocaleString()}
+              </p>
             </div>
           )}
 
@@ -177,20 +208,23 @@ export default function ChecklistGenerator() {
             <h3 className="text-xl font-bold mb-4">🔍 Free Lite Check (Basic Points)</h3>
             <div className="space-y-3">
               {Object.entries(liteChecklist.liteChecklist || {}).map(([category, items]) => (
-                items.map((item, idx) => (
-                  <div key={`${category}-${idx}`} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200">
-                    <span className="text-2xl">{getRiskIcon(item.risk)}</span>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold">{item.point}</h4>
-                        <span className={`px-2 py-1 rounded text-xs font-medium border ${getRiskColor(item.risk)}`}>
-                          {item.risk}
-                        </span>
+                items.map((item, idx) => {
+                  const itemId = `lite-${category}-${idx}`;
+                  return (
+                    <div key={itemId} className="flex items-start gap-3 p-3 rounded-lg border border-gray-200">
+                      <span className="text-2xl">{getRiskIcon(item.risk)}</span>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-semibold">{item.point}</h4>
+                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getRiskColor(item.risk)}`}>
+                            {item.risk}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{item.details}</p>
                       </div>
-                      <p className="text-sm text-gray-600">{item.details}</p>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               ))}
             </div>
           </div>
@@ -199,19 +233,19 @@ export default function ChecklistGenerator() {
           <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg p-6 text-white">
             <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium Full Check</h3>
             <p className="mb-4 text-purple-100">
-              Get 15+ detailed inspection points, risk analysis, repair costs & negotiation tips
+              Get 25+ detailed inspection points with checkboxes, risk analysis, repair costs & negotiation tips
             </p>
             <button 
               onClick={() => setShowPaymentModal(true)}
               className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 transition-colors w-full"
             >
-              Pay €2.50 to Unlock Premium Check
+              Upgrade to Premium - €2.50
             </button>
           </div>
         </div>
       )}
 
-      {/* Premium Checklist Display */}
+      {/* Premium Checklist Display with Checkboxes */}
       {premiumChecklist && (
         <div className="space-y-6">
           <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg shadow-lg p-6 text-white">
@@ -219,86 +253,142 @@ export default function ChecklistGenerator() {
               <span className="text-2xl">✓</span>
               <h2 className="text-2xl font-bold">Premium Full Check Unlocked!</h2>
             </div>
-            <p className="text-green-100">Complete inspection checklist for your purchase decision</p>
+            <p className="text-green-100">Complete inspection checklist - Check off items during your on-site inspection</p>
           </div>
 
-          {/* Full Checklist by Category */}
+          {/* Progress Bar */}
+          {Object.keys(checkedItems).length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-semibold text-gray-700">Inspection Progress</span>
+                <span className="text-sm text-gray-600">
+                  {Object.values(checkedItems).filter(Boolean).length} / {Object.keys(checkedItems).length} checked
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-green-500 h-2 rounded-full transition-all"
+                  style={{ 
+                    width: `${(Object.values(checkedItems).filter(Boolean).length / Object.keys(checkedItems).length) * 100}%` 
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Full Checklist by Category with Checkboxes */}
           {Object.entries(premiumChecklist.fullChecklist || {}).map(([category, items]) => (
             <div key={category} className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
                 <h3 className="font-bold text-gray-900 capitalize">{category}</h3>
               </div>
               <div className="divide-y divide-gray-200">
-                {items.map((item, idx) => (
-                  <div key={idx} className="p-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl flex-shrink-0">{getRiskIcon(item.risk)}</span>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold text-gray-900">{item.point}</h4>
-                          <span className={`px-2 py-1 rounded text-xs font-medium border ${getRiskColor(item.risk)}`}>
-                            {item.risk}
-                          </span>
+                {items.map((item, idx) => {
+                  const itemId = `${category}-${idx}`;
+                  const isChecked = checkedItems[itemId];
+                  
+                  return (
+                    <div 
+                      key={itemId} 
+                      className={`p-4 hover:bg-gray-50 transition-colors ${isChecked ? 'bg-green-50' : ''}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* ✅ Checkbox for on-site inspection */}
+                        <input
+                          type="checkbox"
+                          checked={isChecked || false}
+                          onChange={() => toggleCheckbox(itemId)}
+                          className="mt-1 w-5 h-5 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                        />
+                        
+                        <span className="text-2xl flex-shrink-0">{getRiskIcon(item.risk)}</span>
+                        
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className={`font-semibold ${isChecked ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                              {item.point}
+                            </h4>
+                            <span className={`px-2 py-1 rounded text-xs font-medium border ${getRiskColor(item.risk)}`}>
+                              {item.risk}
+                            </span>
+                          </div>
+                          <p className={`text-sm ${isChecked ? 'text-gray-500' : 'text-gray-600'}`}>
+                            {item.details}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600">{item.details}</p>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}
+
+          {/* Completion Message */}
+          {Object.keys(checkedItems).length > 0 && 
+           Object.values(checkedItems).filter(Boolean).length === Object.keys(checkedItems).length && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+              <span className="text-4xl mb-2 block">🎉</span>
+              <h3 className="text-xl font-bold text-green-900 mb-2">Inspection Complete!</h3>
+              <p className="text-green-700">
+                All items checked. Review your findings and make your purchase decision.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Payment Modal - WITH AUTO-CLOSE FIX */}
+      {/* ✅ FIXED Payment Modal - Shows Processing State */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold mb-4">Upgrade to Premium</h2>
-            <div className="mb-6">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
-                <p className="font-semibold text-purple-900 mb-2">Premium Full Check includes:</p>
-                <ul className="space-y-1 text-sm text-purple-800">
-                  <li>✓ 15+ detailed inspection points</li>
-                  <li>✓ Model-specific weak points</li>
-                  <li>✓ Repair cost estimates</li>
-                  <li>✓ Negotiation leverage tips</li>
-                  <li>✓ Complete risk analysis</li>
-                </ul>
+            {!isProcessingPayment ? (
+              <>
+                <h2 className="text-2xl font-bold mb-4">Upgrade to Premium</h2>
+                <div className="mb-6">
+                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                    <p className="font-semibold text-purple-900 mb-2">Premium Full Check includes:</p>
+                    <ul className="space-y-1 text-sm text-purple-800">
+                      <li>✓ 25+ detailed inspection points</li>
+                      <li>✓ Interactive checkboxes for on-site use</li>
+                      <li>✓ Model-specific weak points</li>
+                      <li>✓ Repair cost estimates</li>
+                      <li>✓ Negotiation leverage tips</li>
+                      <li>✓ Complete risk analysis</li>
+                    </ul>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-gray-900">€2.50</p>
+                    <p className="text-sm text-gray-600">One-time payment</p>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowPaymentModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Maybe Later
+                  </button>
+                  <button
+                    onClick={handlePremiumUpgrade}
+                    className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+                  >
+                    Pay €2.50 & Unlock
+                  </button>
+                </div>
+              </>
+            ) : (
+              // ✅ Processing State - Shown IN the modal
+              <div className="text-center py-8">
+                <svg className="animate-spin h-12 w-12 mx-auto mb-4 text-purple-600" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Processing Payment...</h3>
+                <p className="text-gray-600">Generating your premium checklist</p>
               </div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-gray-900">€2.50</p>
-                <p className="text-sm text-gray-600">One-time payment</p>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                disabled={isProcessingPayment}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handlePremiumUpgrade}
-                disabled={isProcessingPayment}
-                className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isProcessingPayment ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Processing...
-                  </span>
-                ) : (
-                  'Pay €2.50'
-                )}
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
