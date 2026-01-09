@@ -1,8 +1,7 @@
 // api/generate-checklist.js
-// Vercel Serverless Function - API Key stays SECRET on server!
+// Updated to generate 25+ inspection points for Premium
 
 export default async function handler(req, res) {
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -10,7 +9,6 @@ export default async function handler(req, res) {
   try {
     const { vehicleInfo, checkType } = req.body;
 
-    // Get API Key from Environment Variable (SECRET!)
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
     if (!GEMINI_API_KEY) {
@@ -56,7 +54,7 @@ IMPORTANT:
 - Focus on common defects for this specific model`
       : `You are CheckCar, an AI expert for used car inspections in the European market.
 
-TASK: Create a COMPLETE Premium Checklist (15+ points) for used car purchase inspection.
+TASK: Create a COMPREHENSIVE Premium Checklist (25-30 points) for used car purchase inspection.
 
 FORMAT: Respond ONLY with a JSON object:
 {
@@ -77,13 +75,16 @@ FORMAT: Respond ONLY with a JSON object:
 }
 
 IMPORTANT:
-- Minimum 15 detailed inspection points
-- Cover all 4 categories comprehensively
-- Model-specific known weaknesses and issues
-- Detailed explanations for each point
-- Categorize by risk level accurately`;
+- MINIMUM 25 detailed inspection points, ideally 30
+- Distribute evenly across all 4 categories (6-8 points each)
+- Cover all major systems and components comprehensively
+- Model-specific known weaknesses and common failure points
+- Detailed explanations for each point (what to check, why it matters, what to look for)
+- Categorize by risk level accurately (high/medium/low)
+- Include both visible checks and diagnostic recommendations
+- Mention specific parts, components, and areas prone to issues on this model`;
 
-    // Call Gemini API
+    // Call Gemini API with updated model name
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -99,7 +100,7 @@ IMPORTANT:
           }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 4096, // Increased for more detailed responses
           }
         })
       }
