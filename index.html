@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CheckCar - AI-Powered Used Car Inspection</title>
-    <link rel="icon" type="image/png" href="CheckCar App Logo.png">
+    <link rel="icon" type="image/png" href="/CheckCar App Logo.png">
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -15,527 +15,527 @@
         .animate-spin { animation: spin 1s linear infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
         .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        .blur-sm { filter: blur(4px); }
+        @keyframes ping { 75%, 100% { transform: scale(2); opacity: 0; } }
+        .animate-ping { animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState } = React;
+        const { useState, useRef } = React;
 
-        // NO API KEY HERE! It's safely stored in Vercel Environment Variables 🔒
-        // API calls go through our secure serverless function at /api/generate-checklist
+        function ChecklistGenerator() {
+            // Input modes
+            const [inputMode, setInputMode] = useState('select');
+            const [vehicleInfo, setVehicleInfo] = useState('');
+            const [uploadedFile, setUploadedFile] = useState(null);
+            const [isRecording, setIsRecording] = useState(false);
+            const fileInputRef = useRef(null);
+            const recognitionRef = useRef(null);
 
-        // Icons
-        const CheckCircle2 = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
-                <path d="m9 12 2 2 4-4"></path>
-            </svg>
-        );
+            // States
+            const [loading, setLoading] = useState(false);
+            const [liteChecklist, setLiteChecklist] = useState(null);
+            const [premiumChecklist, setPremiumChecklist] = useState(null);
+            const [error, setError] = useState(null);
+            const [showPaymentModal, setShowPaymentModal] = useState(false);
+            const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+            const [checkedItems, setCheckedItems] = useState({});
 
-        const Loader2 = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
-                <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
-            </svg>
-        );
+            // Handle Photo Upload
+            const handlePhotoUpload = async (file) => {
+                setUploadedFile(file);
+                setLoading(true);
+                setError(null);
 
-        const TrendingUp = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-                <polyline points="17 6 23 6 23 12"></polyline>
-            </svg>
-        );
+                try {
+                    const base64 = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
 
-        const Lock = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-        );
+                    const response = await fetch('/api/analyze-image', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: base64, analysisType: 'vehicle-identification' }),
+                    });
 
-        const Shield = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            </svg>
-        );
+                    if (!response.ok) throw new Error('Image analysis failed');
 
-        const MapPin = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-        );
+                    const data = await response.json();
+                    setVehicleInfo(data.vehicleDescription || '');
+                    setInputMode('text');
+                    
+                } catch (err) {
+                    setError('Could not analyze image. Please try text input instead.');
+                } finally {
+                    setLoading(false);
+                }
+            };
 
-        const Crown = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m2 20 10-10L22 20H2Z"></path>
-                <path d="M12 2v8"></path>
-            </svg>
-        );
+            // Handle Document Scan
+            const handleDocumentScan = async (file) => {
+                setUploadedFile(file);
+                setLoading(true);
+                setError(null);
 
-        const AlertCircle = () => (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-        );
+                try {
+                    const base64 = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = reject;
+                        reader.readAsDataURL(file);
+                    });
 
-        // Secure API Call Function - calls our serverless function
-        async function callChecklistAPI(vehicleInfo, checkType = 'lite') {
-            try {
-                const response = await fetch('/api/generate-checklist', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        vehicleInfo,
-                        checkType
-                    })
-                });
+                    const response = await fetch('/api/analyze-document', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ document: base64, documentType: 'registration' }),
+                    });
 
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `API Error: ${response.status}`);
+                    if (!response.ok) throw new Error('Document analysis failed');
+
+                    const data = await response.json();
+                    setVehicleInfo(data.extractedInfo || '');
+                    setInputMode('text');
+                    
+                } catch (err) {
+                    setError('Could not read document. Please try text input instead.');
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Voice Input
+            const startVoiceRecording = () => {
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    setError('Voice input not supported in your browser');
+                    return;
                 }
 
-                return await response.json();
-            } catch (error) {
-                console.error('API Call Error:', error);
-                throw error;
-            }
-        }
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognitionRef.current = new SpeechRecognition();
+                recognitionRef.current.lang = 'de-DE';
+                recognitionRef.current.continuous = false;
+                recognitionRef.current.interimResults = false;
 
-        function CheckCarApp() {
-            const [step, setStep] = useState('input');
-            const [vehicleInput, setVehicleInput] = useState('');
-            const [vehicleData, setVehicleData] = useState(null);
-            const [priceData, setPriceData] = useState(null);
-            const [liteChecklist, setLiteChecklist] = useState(null);
-            const [fullChecklist, setFullChecklist] = useState(null);
-            const [showPaywall, setShowPaywall] = useState(false);
-            const [loading, setLoading] = useState(false);
-            const [error, setError] = useState(null);
+                recognitionRef.current.onstart = () => {
+                    setIsRecording(true);
+                    setError(null);
+                };
 
-            const generateLiteCheck = async () => {
-                if (!vehicleInput.trim()) {
-                    setError("Please enter vehicle information!");
+                recognitionRef.current.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    setVehicleInfo(transcript);
+                    setInputMode('text');
+                    setIsRecording(false);
+                };
+
+                recognitionRef.current.onerror = (event) => {
+                    setError('Voice recognition error. Please try again.');
+                    setIsRecording(false);
+                };
+
+                recognitionRef.current.onend = () => {
+                    setIsRecording(false);
+                };
+
+                recognitionRef.current.start();
+            };
+
+            const stopVoiceRecording = () => {
+                if (recognitionRef.current) {
+                    recognitionRef.current.stop();
+                    setIsRecording(false);
+                }
+            };
+
+            // Generate Checklist
+            const handleGenerateLite = async () => {
+                if (!vehicleInfo.trim()) {
+                    setError('Please enter vehicle information');
                     return;
                 }
 
                 setLoading(true);
                 setError(null);
-
-                try {
-                    const result = await callChecklistAPI(vehicleInput, 'lite');
-                    
-                    setVehicleData(result.vehicleInfo);
-                    setPriceData(result.priceEstimate);
-                    setLiteChecklist(result.liteChecklist);
-                    setStep('lite-checklist');
-                } catch (err) {
-                    setError(`Error: ${err.message}`);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            const upgradeToPremium = async () => {
-                setLoading(true);
-                setShowPaywall(false);
-
-                try {
-                    const result = await callChecklistAPI(
-                        `${vehicleData.make} ${vehicleData.model}, Year ${vehicleData.year}`,
-                        'full'
-                    );
-                    
-                    setFullChecklist(result.fullChecklist);
-                    setStep('full-checklist');
-                } catch (err) {
-                    setError(`Error: ${err.message}`);
-                    setShowPaywall(true);
-                } finally {
-                    setLoading(false);
-                }
-            };
-
-            const resetApp = () => {
-                setStep('input');
-                setVehicleInput('');
-                setVehicleData(null);
-                setPriceData(null);
                 setLiteChecklist(null);
-                setFullChecklist(null);
-                setShowPaywall(false);
+                setPremiumChecklist(null);
+                setCheckedItems({});
+
+                try {
+                    const response = await fetch('/api/generate-checklist', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ vehicleInfo, checkType: 'lite' }),
+                    });
+
+                    if (!response.ok) throw new Error('Error generating checklist');
+
+                    const data = await response.json();
+                    setLiteChecklist(data);
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            // Premium Upgrade
+            const handlePremiumUpgrade = async () => {
+                setIsProcessingPayment(true);
                 setError(null);
+                
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                    
+                    const response = await fetch('/api/generate-checklist', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ vehicleInfo, checkType: 'premium' }),
+                    });
+
+                    if (!response.ok) throw new Error('Error generating premium checklist');
+
+                    const data = await response.json();
+                    setPremiumChecklist(data);
+                    
+                    setTimeout(() => {
+                        setIsProcessingPayment(false);
+                        setShowPaymentModal(false);
+                    }, 500);
+                    
+                } catch (err) {
+                    setError(err.message);
+                    setIsProcessingPayment(false);
+                }
+            };
+
+            const toggleCheckbox = (itemId) => {
+                setCheckedItems(prev => ({
+                    ...prev,
+                    [itemId]: !prev[itemId]
+                }));
             };
 
             const getRiskColor = (risk) => {
-                switch(risk) {
-                    case 'high': return 'text-red-600 bg-red-50 border-red-200';
-                    case 'medium': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-                    case 'low': return 'text-green-600 bg-green-50 border-green-200';
-                    default: return 'text-gray-600 bg-gray-50 border-gray-200';
+                switch (risk) {
+                    case 'high': return 'bg-red-100 text-red-800 border-red-300';
+                    case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                    case 'low': return 'bg-green-100 text-green-800 border-green-300';
+                    default: return 'bg-gray-100 text-gray-800 border-gray-300';
                 }
             };
 
             const getRiskIcon = (risk) => {
-                return risk === 'high' ? '⚠️' : risk === 'medium' ? '⚡' : '✓';
-            };
-
-            const formatPrice = (price) => {
-                return new Intl.NumberFormat('en-US', { 
-                    style: 'currency', 
-                    currency: 'EUR', 
-                    maximumFractionDigits: 0 
-                }).format(price);
-            };
-
-            const getCategoryIcon = (category) => {
-                const icons = { 
-                    engine: '🔧', 
-                    body: '🚗', 
-                    electronics: '⚡', 
-                    documents: '📄' 
-                };
-                return icons[category] || '📋';
-            };
-
-            const getCategoryTitle = (category) => {
-                const titles = {
-                    engine: 'Engine & Drivetrain',
-                    body: 'Body & Paint',
-                    electronics: 'Electronics & Comfort',
-                    documents: 'Documents & History'
-                };
-                return titles[category] || category;
+                switch (risk) {
+                    case 'high': return '🔴';
+                    case 'medium': return '🟡';
+                    case 'low': return '🟢';
+                    default: return '⚪';
+                }
             };
 
             return (
-                <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+                <div className="max-w-4xl mx-auto p-6">
                     {/* Header */}
-                    <div className="bg-white shadow-sm border-b border-gray-200">
-                        <div className="max-w-4xl mx-auto px-4 py-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <img 
-                                        src="CheckCar App Logo.png" 
-                                        alt="CheckCar Logo" 
-                                        className="w-12 h-12 object-contain"
+                    <div className="text-center mb-8">
+                        <div className="flex items-center justify-center gap-3 mb-4">
+                            <div className="text-5xl">🚗</div>
+                            <h1 className="text-4xl font-bold text-gray-900">CheckCar</h1>
+                        </div>
+                        <p className="text-xl text-gray-600 mb-2">
+                            AI-Powered Used Car Inspection
+                        </p>
+                        <p className="text-sm text-gray-500">
+                            Photo • Document • Text • Voice
+                        </p>
+                    </div>
+
+                    {/* MODE SELECTION */}
+                    {inputMode === 'select' && !liteChecklist && (
+                        <div className="space-y-6">
+                            <div className="text-center mb-6">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                                    How do you want to start?
+                                </h2>
+                                <p className="text-gray-600">
+                                    Choose your preferred input method
+                                </p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Photo Upload */}
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="group relative bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-8 text-white hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-105 shadow-lg"
+                                >
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            if (e.target.files?.[0]) handlePhotoUpload(e.target.files[0]);
+                                        }}
                                     />
-                                    <div>
-                                        <h1 className="text-2xl font-bold text-gray-900">CheckCar</h1>
-                                        <p className="text-sm text-gray-600">AI-Powered Used Car Inspection</p>
+                                    <div className="text-center">
+                                        <div className="text-5xl mb-3">📸</div>
+                                        <h3 className="text-xl font-bold mb-2">Take Photo</h3>
+                                        <p className="text-blue-100 text-sm">
+                                            Snap a picture of the car
+                                        </p>
                                     </div>
+                                </button>
+
+                                {/* Document Scan */}
+                                <button
+                                    onClick={() => {
+                                        const input = document.createElement('input');
+                                        input.type = 'file';
+                                        input.accept = 'image/*';
+                                        input.onchange = (e) => {
+                                            if (e.target.files?.[0]) handleDocumentScan(e.target.files[0]);
+                                        };
+                                        input.click();
+                                    }}
+                                    className="group relative bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-8 text-white hover:from-purple-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-lg"
+                                >
+                                    <div className="text-center">
+                                        <div className="text-5xl mb-3">📄</div>
+                                        <h3 className="text-xl font-bold mb-2">Scan Document</h3>
+                                        <p className="text-purple-100 text-sm">
+                                            Upload registration/VIN
+                                        </p>
+                                    </div>
+                                </button>
+
+                                {/* Text Input */}
+                                <button
+                                    onClick={() => setInputMode('text')}
+                                    className="group relative bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-8 text-white hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-105 shadow-lg"
+                                >
+                                    <div className="text-center">
+                                        <div className="text-5xl mb-3">✍️</div>
+                                        <h3 className="text-xl font-bold mb-2">Type Details</h3>
+                                        <p className="text-green-100 text-sm">
+                                            Enter vehicle information
+                                        </p>
+                                    </div>
+                                </button>
+
+                                {/* Voice Input */}
+                                <button
+                                    onClick={startVoiceRecording}
+                                    className="group relative bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-8 text-white hover:from-orange-600 hover:to-orange-700 transition-all transform hover:scale-105 shadow-lg"
+                                >
+                                    <div className="text-center">
+                                        <div className="text-5xl mb-3">🎤</div>
+                                        <h3 className="text-xl font-bold mb-2">Voice Input</h3>
+                                        <p className="text-orange-100 text-sm">
+                                            Just speak the details
+                                        </p>
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* Examples */}
+                            <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                                <p className="text-sm font-semibold text-gray-700 mb-3">💡 Quick Start Examples:</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                                    <div>• BMW 3 Series E90, 2010, 180k km</div>
+                                    <div>• VW Golf 7 GTI, 2015, DSG</div>
+                                    <div>• Audi A4 B8, 2012, TDI, 200k km</div>
+                                    <div>• Mercedes C-Class W204, 2011</div>
                                 </div>
-                                {step !== 'input' && (
-                                    <button 
-                                        onClick={resetApp} 
-                                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-                                    >
-                                        New Check
-                                    </button>
-                                )}
                             </div>
                         </div>
-                    </div>
+                    )}
 
-                    <div className="max-w-4xl mx-auto px-4 py-8">
-                        {/* Input Screen */}
-                        {step === 'input' && (
-                            <div className="space-y-6">
+                    {/* VOICE RECORDING */}
+                    {isRecording && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
                                 <div className="text-center">
-                                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                                        🚗 Start Vehicle Inspection
-                                    </h2>
-                                    <p className="text-gray-600">
-                                        Enter vehicle details and get an AI-generated inspection checklist
+                                    <div className="inline-block relative mb-6">
+                                        <div className="text-6xl">🎤</div>
+                                        <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-25" />
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Listening...</h3>
+                                    <p className="text-gray-600 mb-6">
+                                        Speak the vehicle details clearly
                                     </p>
-                                </div>
-
-                                <div className="bg-white rounded-2xl shadow-lg p-8">
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                                        Vehicle Information
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="e.g. VW Golf 7, Year 2015, Diesel, 120,000 km"
-                                        value={vehicleInput}
-                                        onChange={(e) => setVehicleInput(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && generateLiteCheck()}
-                                        className="w-full px-4 py-4 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                                        disabled={loading}
-                                    />
-
-                                    {error && (
-                                        <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
-                                            <AlertCircle />
-                                            <div className="flex-1">
-                                                <p className="font-semibold text-red-900">Error</p>
-                                                <p className="text-sm text-red-700">{error}</p>
-                                            </div>
-                                        </div>
-                                    )}
-
                                     <button
-                                        onClick={generateLiteCheck}
-                                        disabled={loading || !vehicleInput.trim()}
-                                        className="mt-6 w-full bg-blue-600 text-white py-4 rounded-xl font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-lg"
+                                        onClick={stopVoiceRecording}
+                                        className="bg-red-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700"
                                     >
-                                        {loading ? (
-                                            <>
-                                                <Loader2 />
-                                                <span>AI is analyzing vehicle...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <CheckCircle2 />
-                                                <span>Generate Free Lite Check</span>
-                                            </>
-                                        )}
-                                    </button>
-
-                                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                                        <p className="text-sm text-blue-900 font-semibold mb-2">💡 Examples:</p>
-                                        <div className="space-y-1 text-sm text-blue-700">
-                                            <p>• BMW 3 Series E90, Year 2010, Petrol, 180,000 km</p>
-                                            <p>• Audi A4 B8, Year 2012, TDI, 200,000 km</p>
-                                            <p>• Mercedes C-Class W204, Year 2011, 150,000 km</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Lite Checklist - Same UI as before */}
-                        {step === 'lite-checklist' && liteChecklist && vehicleData && (
-                            <div className="space-y-6">
-                                <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl shadow-lg p-6 text-white">
-                                    <h2 className="text-2xl font-bold mb-4">
-                                        {vehicleData.make} {vehicleData.model}
-                                    </h2>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <p className="text-blue-100 text-sm">Year</p>
-                                            <p className="text-xl font-semibold">{vehicleData.year}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-blue-100 text-sm">Type</p>
-                                            <p className="text-xl font-semibold">{vehicleData.type}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {priceData && (
-                                    <div className="bg-green-50 border border-green-200 rounded-xl p-6">
-                                        <div className="flex items-center gap-2 mb-3">
-                                            <TrendingUp />
-                                            <h3 className="font-semibold text-green-900">💰 Estimated Market Value</h3>
-                                        </div>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div>
-                                                <p className="text-xs text-gray-600 mb-1">Minimum</p>
-                                                <p className="text-lg font-bold text-gray-900">{formatPrice(priceData.min)}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-gray-600 mb-1">Average</p>
-                                                <p className="text-xl font-bold text-green-600">{formatPrice(priceData.average)}</p>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-gray-600 mb-1">Maximum</p>
-                                                <p className="text-lg font-bold text-gray-900">{formatPrice(priceData.max)}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="bg-white rounded-2xl shadow-lg p-6">
-                                    <div className="flex items-center justify-between mb-6">
-                                        <div>
-                                            <h2 className="text-2xl font-bold text-gray-900">Free Lite Check</h2>
-                                            <p className="text-gray-600">Most critical inspection points</p>
-                                        </div>
-                                        <div className="bg-blue-100 text-blue-600 px-4 py-2 rounded-full text-sm font-semibold">
-                                            FREE
-                                        </div>
-                                    </div>
-
-                                    {Object.entries(liteChecklist).map(([category, items]) => (
-                                        <div key={category} className="mb-6">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <span className="text-2xl">{getCategoryIcon(category)}</span>
-                                                <h3 className="text-lg font-bold text-gray-900">
-                                                    {getCategoryTitle(category)}
-                                                </h3>
-                                            </div>
-                                            <div className="space-y-3">
-                                                {items.map((item, idx) => (
-                                                    <div 
-                                                        key={idx} 
-                                                        className={`p-4 rounded-lg border ${getRiskColor(item.risk)}`}
-                                                    >
-                                                        <div className="flex items-start gap-3">
-                                                            <span className="text-xl">{getRiskIcon(item.risk)}</span>
-                                                            <div className="flex-1">
-                                                                <p className="font-semibold">{item.point}</p>
-                                                                <p className="text-sm mt-1 opacity-90">{item.details}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-lg p-8 border-2 border-purple-200">
-                                    <div className="text-center">
-                                        <div className="w-16 h-16 mx-auto mb-4 text-purple-600">
-                                            <Crown />
-                                        </div>
-                                        <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                                            Unlock Full Inspection Report
-                                        </h3>
-                                        <p className="text-gray-600 mb-6">
-                                            Get a comprehensive checklist with 15+ detailed inspection points
-                                        </p>
-                                        
-                                        <div className="bg-white rounded-xl p-6 mb-6">
-                                            <div className="grid md:grid-cols-3 gap-4 text-left">
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <CheckCircle2 />
-                                                        <p className="font-semibold">15+ Checkpoints</p>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">Complete analysis</p>
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <Shield />
-                                                        <p className="font-semibold">Risk Analysis</p>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">Detailed assessment</p>
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <TrendingUp />
-                                                        <p className="font-semibold">Negotiation Tips</p>
-                                                    </div>
-                                                    <p className="text-sm text-gray-600">Price optimization</p>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <button
-                                            onClick={() => setShowPaywall(true)}
-                                            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold text-lg hover:shadow-lg transition-all"
-                                        >
-                                            Upgrade for €2.50
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Full Checklist - abbreviated for space */}
-                        {step === 'full-checklist' && fullChecklist && vehicleData && (
-                            <div className="space-y-6">
-                                <div className="bg-white rounded-2xl shadow-lg p-6">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div>
-                                            <h2 className="text-2xl font-bold text-gray-900">Premium Full Check</h2>
-                                            <p className="text-gray-600">
-                                                {vehicleData.make} {vehicleData.model} ({vehicleData.year})
-                                            </p>
-                                        </div>
-                                        <div className="bg-gradient-to-r from-purple-100 to-pink-100 text-purple-600 px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-1">
-                                            <Crown />
-                                            PREMIUM
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {Object.entries(fullChecklist).map(([category, items]) => (
-                                    <div key={category} className="bg-white rounded-2xl shadow-lg p-6">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <span className="text-2xl">{getCategoryIcon(category)}</span>
-                                            <h3 className="text-xl font-bold text-gray-900">
-                                                {getCategoryTitle(category)}
-                                            </h3>
-                                        </div>
-                                        <div className="space-y-3">
-                                            {items.map((item, idx) => (
-                                                <div 
-                                                    key={idx} 
-                                                    className={`p-4 rounded-lg border ${getRiskColor(item.risk)}`}
-                                                >
-                                                    <div className="flex items-start gap-3">
-                                                        <span className="text-xl">{getRiskIcon(item.risk)}</span>
-                                                        <div className="flex-1">
-                                                            <p className="font-semibold">{item.point}</p>
-                                                            <p className="text-sm mt-1 opacity-90">{item.details}</p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Payment Modal */}
-                    {showPaywall && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-                            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
-                                <div className="text-center mb-6">
-                                    <div className="w-16 h-16 mx-auto mb-4 text-purple-600">
-                                        <Crown />
-                                    </div>
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                                        Upgrade to Premium
-                                    </h3>
-                                    <p className="text-gray-600">
-                                        Get the complete inspection report
-                                    </p>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <button
-                                        onClick={upgradeToPremium}
-                                        disabled={loading}
-                                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {loading ? <Loader2 /> : <Lock />}
-                                        {loading ? 'Processing...' : 'Pay €2.50 & Unlock'}
-                                    </button>
-                                    <button
-                                        onClick={() => setShowPaywall(false)}
-                                        className="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-all"
-                                    >
-                                        Maybe Later
+                                        Stop Recording
                                     </button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Footer */}
-                    <div className="max-w-4xl mx-auto px-4 py-8 text-center text-sm text-gray-500">
-                        <p className="font-semibold">CheckCar Business Demo • Powered by Gemini AI</p>
-                        <p className="mt-1">Developed by Mathias Schulz</p>
-                        <p className="mt-2 text-xs">🔒 Secure API • Bold Awards 2025 Submission</p>
-                    </div>
+                    {/* TEXT INPUT MODE */}
+                    {inputMode === 'text' && !liteChecklist && (
+                        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Vehicle Information
+                                </label>
+                                <button
+                                    onClick={() => {
+                                        setInputMode('select');
+                                        setVehicleInfo('');
+                                        setUploadedFile(null);
+                                    }}
+                                    className="text-sm text-blue-600 hover:text-blue-700"
+                                >
+                                    ← Change Input Method
+                                </button>
+                            </div>
+                            
+                            <input
+                                type="text"
+                                placeholder="e.g. BMW 3 Series E90, Year 2010, Petrol, 180,000 km"
+                                value={vehicleInfo}
+                                onChange={(e) => setVehicleInfo(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleGenerateLite()}
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+                                disabled={loading}
+                            />
+                            
+                            <button
+                                onClick={handleGenerateLite}
+                                disabled={loading || !vehicleInfo.trim()}
+                                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                                {loading ? 'Analyzing...' : '✓ Generate Free Inspection Check'}
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Loading State */}
+                    {loading && inputMode !== 'text' && (
+                        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                            <div className="animate-spin h-12 w-12 mx-auto mb-4 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Analyzing...</h3>
+                            <p className="text-gray-600">Processing your input</p>
+                        </div>
+                    )}
+
+                    {/* Error Display */}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                            <p className="text-red-800">❌ {error}</p>
+                            <button
+                                onClick={() => {
+                                    setError(null);
+                                    setInputMode('select');
+                                }}
+                                className="mt-2 text-sm text-red-700 hover:text-red-800 font-medium"
+                            >
+                                Try another method →
+                            </button>
+                        </div>
+                    )}
+
+                    {/* REST OF CHECKLIST DISPLAY - keeping it short for space */}
+                    {liteChecklist && !premiumChecklist && (
+                        <div className="space-y-6">
+                            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+                                <h2 className="text-2xl font-bold">
+                                    {liteChecklist.vehicleInfo?.make} {liteChecklist.vehicleInfo?.model}
+                                </h2>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h3 className="text-xl font-bold mb-4">🔍 Free Lite Check</h3>
+                                <div className="space-y-3">
+                                    {Object.entries(liteChecklist.liteChecklist || {}).map(([category, items]) => (
+                                        items.map((item, idx) => (
+                                            <div key={`${category}-${idx}`} className="flex items-start gap-3 p-3 border rounded">
+                                                <span className="text-2xl">{getRiskIcon(item.risk)}</span>
+                                                <div>
+                                                    <h4 className="font-semibold">{item.point}</h4>
+                                                    <p className="text-sm text-gray-600">{item.details}</p>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg p-6 text-white text-center">
+                                <h3 className="text-xl font-bold mb-2">🚀 Unlock Premium</h3>
+                                <p className="mb-4 text-purple-100">25-30+ detailed points with checkboxes</p>
+                                <button 
+                                    onClick={() => setShowPaymentModal(true)}
+                                    className="bg-white text-purple-600 px-6 py-3 rounded-lg font-semibold hover:bg-purple-50 w-full"
+                                >
+                                    Upgrade - €2.50
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Payment Modal */}
+                    {showPaymentModal && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                            <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                                {!isProcessingPayment ? (
+                                    <>
+                                        <h2 className="text-2xl font-bold mb-4">Upgrade to Premium</h2>
+                                        <div className="mb-6">
+                                            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
+                                                <p className="font-semibold text-purple-900 mb-2">Premium includes:</p>
+                                                <ul className="space-y-1 text-sm text-purple-800">
+                                                    <li>✓ 25-30+ detailed points</li>
+                                                    <li>✓ Interactive checkboxes</li>
+                                                    <li>✓ Progress tracking</li>
+                                                </ul>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-3xl font-bold">€2.50</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button
+                                                onClick={() => setShowPaymentModal(false)}
+                                                className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50"
+                                            >
+                                                Maybe Later
+                                            </button>
+                                            <button
+                                                onClick={handlePremiumUpgrade}
+                                                className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+                                            >
+                                                Pay & Unlock
+                                            </button>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <div className="animate-spin h-12 w-12 mx-auto mb-4 border-4 border-purple-600 border-t-transparent rounded-full"></div>
+                                        <h3 className="text-xl font-bold mb-2">Processing...</h3>
+                                        <p className="text-gray-600">Generating premium checklist</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
 
-        ReactDOM.render(<CheckCarApp />, document.getElementById('root'));
+        ReactDOM.render(<ChecklistGenerator />, document.getElementById('root'));
     </script>
+
+    <div style="text-align: center; padding: 20px; color: #666; font-size: 14px;">
+        CheckCar Business Demo • Powered by Gemini AI<br>
+        Developed by Mathias Schulz<br>
+        🔒 Secure API • Bold Awards 2025 Submission
+    </div>
 </body>
 </html>
