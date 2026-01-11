@@ -753,27 +753,31 @@
                                 </div>
 
                                 {/* Progress Bar */}
-                                {Object.keys(checkedItems).length > 0 && (
-                                    <div className="glass rounded-xl p-6" style={{ backgroundColor: 'var(--surface-elevated)' }}>
-                                        <div className="flex justify-between items-center mb-3">
-                                            <span className="font-bold mono text-sm" style={{ color: 'var(--primary)' }}>
-                                                PROGRESS
-                                            </span>
-                                            <span className="font-bold text-lg" style={{ color: 'var(--accent)' }}>
-                                                {Object.values(checkedItems).filter(Boolean).length} / {Object.keys(checkedItems).length}
-                                            </span>
+                                {(() => {
+                                    const totalItems = Object.values(premiumChecklist.fullChecklist || {}).reduce((sum, items) => sum + items.length, 0);
+                                    const checkedCount = Object.values(checkedItems).filter(Boolean).length;
+                                    return (
+                                        <div className="glass rounded-xl p-6" style={{ backgroundColor: 'var(--surface-elevated)' }}>
+                                            <div className="flex justify-between items-center mb-3">
+                                                <span className="font-bold mono text-sm" style={{ color: 'var(--primary)' }}>
+                                                    PROGRESS
+                                                </span>
+                                                <span className="font-bold text-lg" style={{ color: 'var(--accent)' }}>
+                                                    {checkedCount} / {totalItems}
+                                                </span>
+                                            </div>
+                                            <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+                                                <div 
+                                                    className="h-full transition-all duration-500"
+                                                    style={{ 
+                                                        width: `${totalItems > 0 ? (checkedCount / totalItems) * 100 : 0}%`,
+                                                        backgroundColor: 'var(--success)'
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
-                                        <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
-                                            <div 
-                                                className="h-full transition-all duration-500"
-                                                style={{ 
-                                                    width: `${(Object.values(checkedItems).filter(Boolean).length / Object.keys(checkedItems).length) * 100}%`,
-                                                    backgroundColor: 'var(--success)'
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
 
                                 {/* Checklist Items */}
                                 {Object.entries(premiumChecklist.fullChecklist || {}).map(([category, items]) => (
@@ -831,19 +835,25 @@
                                 ))}
 
                                 {/* Completion */}
-                                {Object.keys(checkedItems).length > 0 && 
-                                 Object.values(checkedItems).filter(Boolean).length === Object.keys(checkedItems).length && (
-                                    <div className="glass rounded-2xl p-10 text-center border-2" 
-                                         style={{ backgroundColor: '#ECFDF5', borderColor: 'var(--success)' }}>
-                                        <span className="text-6xl mb-4 block">🎉</span>
-                                        <h3 className="text-3xl font-bold mb-3" style={{ color: 'var(--primary)' }}>
-                                            Inspection Complete!
-                                        </h3>
-                                        <p className="text-lg" style={{ color: 'var(--primary-light)' }}>
-                                            All items checked. Review findings and make your decision.
-                                        </p>
-                                    </div>
-                                )}
+                                {(() => {
+                                    const totalItems = Object.values(premiumChecklist.fullChecklist || {}).reduce((sum, items) => sum + items.length, 0);
+                                    const checkedCount = Object.values(checkedItems).filter(Boolean).length;
+                                    if (totalItems > 0 && checkedCount === totalItems) {
+                                        return (
+                                            <div className="glass rounded-2xl p-10 text-center border-2" 
+                                                 style={{ backgroundColor: '#ECFDF5', borderColor: 'var(--success)' }}>
+                                                <span className="text-6xl mb-4 block">🎉</span>
+                                                <h3 className="text-3xl font-bold mb-3" style={{ color: 'var(--primary)' }}>
+                                                    Inspection Complete!
+                                                </h3>
+                                                <p className="text-lg" style={{ color: 'var(--primary-light)' }}>
+                                                    All items checked. Review findings and make your decision.
+                                                </p>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
                         )}
 
@@ -925,4 +935,3 @@
     </script>
 </body>
 </html>
-
