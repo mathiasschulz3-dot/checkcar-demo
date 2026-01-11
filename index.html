@@ -433,11 +433,18 @@
                 setPremiumChecklist(null);
                 setCheckedItems({});
 
+                // Add language instruction to vehicle info
+                const languageInstruction = lang === 'de' 
+                    ? ' [WICHTIG: Generiere die gesamte Checkliste auf DEUTSCH. Alle Kategorien, Prüfpunkte und Details müssen auf Deutsch sein.]'
+                    : ' [IMPORTANT: Generate the entire checklist in ENGLISH. All categories, inspection points and details must be in English.]';
+                
+                const vehicleInfoWithLang = vehicleInfo + languageInstruction;
+
                 try {
                     const response = await fetch('/api/generate-checklist', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ vehicleInfo, checkType: 'lite' }),
+                        body: JSON.stringify({ vehicleInfo: vehicleInfoWithLang, checkType: 'lite' }),
                     });
 
                     if (!response.ok) throw new Error('Error generating checklist');
@@ -459,10 +466,17 @@
                 try {
                     await new Promise(resolve => setTimeout(resolve, 1500));
                     
+                    // Add language instruction to vehicle info
+                    const languageInstruction = lang === 'de' 
+                        ? ' [WICHTIG: Generiere die gesamte Checkliste auf DEUTSCH. Alle Kategorien, Prüfpunkte und Details müssen auf Deutsch sein.]'
+                        : ' [IMPORTANT: Generate the entire checklist in ENGLISH. All categories, inspection points and details must be in English.]';
+                    
+                    const vehicleInfoWithLang = vehicleInfo + languageInstruction;
+                    
                     const response = await fetch('/api/generate-checklist', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ vehicleInfo, checkType: 'premium' }),
+                        body: JSON.stringify({ vehicleInfo: vehicleInfoWithLang, checkType: 'premium' }),
                     });
 
                     if (!response.ok) throw new Error('Error generating premium checklist');
@@ -1117,8 +1131,8 @@
 
                     {/* Footer */}
                     <div className="max-w-4xl mx-auto mt-16 text-center text-sm mono" style={{ color: 'var(--primary-light)' }}>
-                        <p className="mb-2 font-bold">CheckCar.App • Powered by Gemini AI</p>
-                        <p>Developed by KI ProjexX Mathias Schulz</p>
+                        <p className="mb-2 font-bold">CheckCar Business Demo • Powered by Gemini AI</p>
+                        <p>Developed by Mathias Schulz</p>
                         <p className="mt-2" style={{ color: 'var(--accent)' }}>
                             🔒 Secure API • BOLD Awards 2025 Submission
                         </p>
