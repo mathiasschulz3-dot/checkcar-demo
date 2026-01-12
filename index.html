@@ -378,39 +378,100 @@
 
             // Voice Input
             const startVoiceRecording = () => {
+                // Check if speech recognition is supported
                 if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                    setError('Voice input not supported in your browser');
+                    setError(lang === 'de' 
+                        ? 'Spracheingabe wird in diesem Browser nicht unterstützt. Bitte verwende Chrome, Safari oder Edge.'
+                        : 'Voice input not supported in this browser. Please use Chrome, Safari, or Edge.');
                     return;
                 }
 
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognitionRef.current = new SpeechRecognition();
-                recognitionRef.current.lang = lang === 'de' ? 'de-DE' : 'en-US';
-                recognitionRef.current.continuous = false;
-                recognitionRef.current.interimResults = false;
+                // Check if HTTPS (required for voice input on mobile)
+                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+                    setError(lang === 'de'
+                        ? 'Spracheingabe erfordert eine sichere Verbindung (HTTPS).'
+                        : 'Voice input requires a secure connection (HTTPS).');
+                    return;
+                }
 
-                recognitionRef.current.onstart = () => {
-                    setIsRecording(true);
-                    setError(null);
-                };
+                try {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognitionRef.current = new SpeechRecognition();
+                    recognitionRef.current.lang = lang === 'de' ? 'de-DE' : 'en-US';
+                    recognitionRef.current.continuous = false;
+                    recognitionRef.current.interimResults = false;
+                    
+                    // Mobile-specific settings
+                    recognitionRef.current.maxAlternatives = 1;
 
-                recognitionRef.current.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    setVehicleInfo(transcript);
-                    setInputMode('text');
+                    recognitionRef.current.onstart = () => {
+                        setIsRecording(true);
+                        setError(null);
+                    };
+
+                    recognitionRef.current.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        setVehicleInfo(transcript);
+                        setInputMode('text');
+                        setIsRecording(false);
+                    };
+
+                    recognitionRef.current.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error, event);
+                        setIsRecording(false);
+                        
+                        // Better error messages based on error type
+                        let errorMessage = '';
+                        switch (event.error) {
+                            case 'not-allowed':
+                            case 'permission-denied':
+                                errorMessage = lang === 'de'
+                                    ? '🎤 Mikrofon-Zugriff verweigert. Gehe zu Einstellungen → Safari → Mikrofon und erlaube checkcar.app. Dann Seite neu laden.'
+                                    : '🎤 Microphone access denied. Go to Settings → Safari → Microphone and allow checkcar.app. Then reload page.';
+                                break;
+                            case 'no-speech':
+                                errorMessage = lang === 'de'
+                                    ? '🔇 Keine Sprache erkannt. Bitte lauter und deutlicher sprechen.'
+                                    : '🔇 No speech detected. Please speak louder and more clearly.';
+                                break;
+                            case 'network':
+                                errorMessage = lang === 'de'
+                                    ? '📡 Netzwerkfehler. Prüfe deine Internetverbindung.'
+                                    : '📡 Network error. Check your internet connection.';
+                                break;
+                            case 'aborted':
+                                // User stopped it - don't show error
+                                return;
+                            case 'audio-capture':
+                                errorMessage = lang === 'de'
+                                    ? '🎤 Mikrofon konnte nicht aktiviert werden. Prüfe ob andere Apps das Mikrofon blockieren.'
+                                    : '🎤 Microphone could not be activated. Check if other apps are blocking the microphone.';
+                                break;
+                            case 'service-not-allowed':
+                                errorMessage = lang === 'de'
+                                    ? '⚠️ Spracheingabe auf diesem Gerät nicht verfügbar. Bitte verwende Text-Eingabe.'
+                                    : '⚠️ Voice input not available on this device. Please use text input.';
+                                break;
+                            default:
+                                errorMessage = lang === 'de'
+                                    ? `⚠️ Spracheingabe-Problem (${event.error}). Auf mobilen Geräten funktioniert Voice Input oft nicht. Bitte verwende Text-Eingabe oder Foto/Dokument.`
+                                    : `⚠️ Voice input problem (${event.error}). Voice input often doesn't work on mobile. Please use text input or photo/document instead.`;
+                        }
+                        setError(errorMessage);
+                    };
+
+                    recognitionRef.current.onend = () => {
+                        setIsRecording(false);
+                    };
+
+                    recognitionRef.current.start();
+                } catch (err) {
+                    console.error('Error starting speech recognition:', err);
+                    setError(lang === 'de'
+                        ? 'Spracheingabe konnte nicht gestartet werden. Bitte verwende eine andere Eingabemethode.'
+                        : 'Could not start voice input. Please use another input method.');
                     setIsRecording(false);
-                };
-
-                recognitionRef.current.onerror = (event) => {
-                    setError('Voice recognition error. Please try again.');
-                    setIsRecording(false);
-                };
-
-                recognitionRef.current.onend = () => {
-                    setIsRecording(false);
-                };
-
-                recognitionRef.current.start();
+                }
             };
 
             const stopVoiceRecording = () => {
@@ -699,8 +760,11 @@
                                             <h3 className="text-2xl font-bold mb-2" style={{ color: 'var(--primary)' }}>
                                                 {t.voiceInput}
                                             </h3>
-                                            <p className="text-sm" style={{ color: 'var(--primary-light)' }}>
+                                            <p className="text-sm mb-2" style={{ color: 'var(--primary-light)' }}>
                                                 {t.voiceInputDesc}
+                                            </p>
+                                            <p className="text-xs opacity-60" style={{ color: 'var(--accent)' }}>
+                                                {lang === 'de' ? '📱 Funktioniert am besten auf Desktop' : '📱 Works best on desktop'}
                                             </p>
                                         </div>
                                     </button>
@@ -827,21 +891,66 @@
 
                         {/* Error */}
                         {error && (
-                            <div className="glass rounded-xl p-6 mb-6 border-2" 
+                            <div className="glass rounded-xl p-6 mb-6 border-2 animate-fade-in" 
                                  style={{ backgroundColor: '#FEF2F2', borderColor: 'var(--danger)' }}>
-                                <p className="font-semibold" style={{ color: 'var(--danger)' }}>
-                                    ❌ {error}
-                                </p>
-                                <button
-                                    onClick={() => {
-                                        setError(null);
-                                        setInputMode('select');
-                                    }}
-                                    className="mt-3 text-sm font-bold hover:opacity-80"
-                                    style={{ color: 'var(--danger)' }}
-                                >
-                                    {t.tryAnother}
-                                </button>
+                                <div className="flex items-start gap-3">
+                                    <span className="text-2xl">❌</span>
+                                    <div className="flex-1">
+                                        <p className="font-bold mb-2" style={{ color: 'var(--danger)' }}>
+                                            {error}
+                                        </p>
+                                        {(error.includes('Voice') || error.includes('Sprache') || error.includes('Mikrofon') || error.includes('microphone')) ? (
+                                            <div className="mt-4 pt-4 border-t border-red-200">
+                                                <p className="text-sm font-semibold mb-3" style={{ color: 'var(--primary)' }}>
+                                                    {lang === 'de' ? '💡 Alternative Eingabemethoden:' : '💡 Alternative input methods:'}
+                                                </p>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            setError(null);
+                                                            setInputMode('text');
+                                                        }}
+                                                        className="px-4 py-2 rounded-lg font-semibold text-white transition-all hover:opacity-90"
+                                                        style={{ backgroundColor: 'var(--success)' }}
+                                                    >
+                                                        ⌨️ {lang === 'de' ? 'Text eingeben' : 'Type text'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setError(null);
+                                                            fileInputRef.current?.click();
+                                                        }}
+                                                        className="px-4 py-2 rounded-lg font-semibold text-white transition-all hover:opacity-90"
+                                                        style={{ backgroundColor: 'var(--accent)' }}
+                                                    >
+                                                        📷 {lang === 'de' ? 'Foto machen' : 'Take photo'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            setError(null);
+                                                            setInputMode('select');
+                                                        }}
+                                                        className="px-4 py-2 rounded-lg font-semibold border-2 transition-all hover:bg-gray-50"
+                                                        style={{ borderColor: 'var(--primary-light)', color: 'var(--primary)' }}
+                                                    >
+                                                        🔙 {lang === 'de' ? 'Zurück' : 'Go back'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    setError(null);
+                                                    setInputMode('select');
+                                                }}
+                                                className="mt-3 text-sm font-bold hover:opacity-80"
+                                                style={{ color: 'var(--danger)' }}
+                                            >
+                                                {t.tryAnother}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
                         )}
 
@@ -1149,7 +1258,7 @@
 
                     {/* Footer */}
                     <div className="max-w-4xl mx-auto mt-16 text-center text-sm mono" style={{ color: 'var(--primary-light)' }}>
-                        <p className="mb-2 font-bold">CheckCar Business Demo • Powered by Claude & Gemini AI</p>
+                        <p className="mb-2 font-bold">CheckCar.App Demo • Powered by Claude & Gemini AI</p>
                         <p>Developed by KI ProjexX Mathias Schulz</p>
                         <p className="mt-2" style={{ color: 'var(--accent)' }}>
                             🔒 Secure API • BOLD Awards 2025 Submission
@@ -1163,4 +1272,3 @@
     </script>
 </body>
 </html>
-
