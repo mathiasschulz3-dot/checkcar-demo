@@ -708,13 +708,30 @@
 
                                 <div className="glass rounded-xl p-6" style={{ backgroundColor: 'var(--surface-elevated)' }}>
                                     <p className="text-sm font-bold mb-4 mono" style={{ color: 'var(--accent)' }}>
-                                        💡 {t.examples}
+                                        💡 {t.examples} <span className="text-xs opacity-70">({lang === 'de' ? 'Klicken zum Ausfüllen' : 'Click to use'})</span>
                                     </p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm" style={{ color: 'var(--primary-light)' }}>
-                                        <div>• BMW 3 Series E90, 2010, 180k km</div>
-                                        <div>• VW Golf 7 GTI, 2015, DSG</div>
-                                        <div>• Audi A4 B8, 2012, TDI, 200k km</div>
-                                        <div>• Mercedes C-Class W204, 2011</div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {[
+                                            "BMW 3 Series E90, 2010, 180k km",
+                                            "VW Golf 7 GTI, 2015, DSG",
+                                            "Audi A4 B8, 2012, TDI, 200k km",
+                                            "Mercedes C-Class W204, 2011"
+                                        ].map((example, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => {
+                                                    setVehicleInfo(example);
+                                                    setInputMode('text');
+                                                }}
+                                                className="text-left px-4 py-3 rounded-lg text-sm transition-all hover:bg-white hover:shadow-md border-2 border-transparent hover:border-red-600 hover:scale-105"
+                                                style={{ 
+                                                    color: 'var(--primary-light)',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                <span className="inline-block mr-2">👉</span>• {example}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
@@ -1132,8 +1149,8 @@
 
                     {/* Footer */}
                     <div className="max-w-4xl mx-auto mt-16 text-center text-sm mono" style={{ color: 'var(--primary-light)' }}>
-                        <p className="mb-2 font-bold">CheckCar.App • Powered by Claude & Gemini AI</p>
-                        <p>Developed by KI ProjexX Mathias Schulz </p>
+                        <p className="mb-2 font-bold">CheckCar Business Demo • Powered by Gemini AI</p>
+                        <p>Developed by Mathias Schulz</p>
                         <p className="mt-2" style={{ color: 'var(--accent)' }}>
                             🔒 Secure API • BOLD Awards 2025 Submission
                         </p>
@@ -1146,4 +1163,3 @@
     </script>
 </body>
 </html>
-
