@@ -543,13 +543,14 @@
                     <div className="max-w-4xl mx-auto">
                         {/* Header with Language Switcher */}
                         <div className="text-center mb-12 animate-slide-up">
-                            <div className="absolute top-8 right-8 flex gap-3 mono text-sm font-bold">
+                            {/* Language Switcher - Mobile Friendly */}
+                            <div className="flex justify-end mb-4 gap-3 mono text-sm font-bold">
                                 <button 
                                     onClick={() => setLang('de')}
                                     className={`lang-btn ${lang === 'de' ? 'active' : ''}`}
                                     style={{ color: 'var(--accent)' }}
                                 >
-                                    GERMAN
+                                    DE
                                 </button>
                                 <span style={{ color: 'var(--accent)' }}>|</span>
                                 <button 
@@ -557,7 +558,7 @@
                                     className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
                                     style={{ color: 'var(--accent)' }}
                                 >
-                                    ENGLISH
+                                    EN
                                 </button>
                             </div>
                             
@@ -1131,8 +1132,8 @@
 
                     {/* Footer */}
                     <div className="max-w-4xl mx-auto mt-16 text-center text-sm mono" style={{ color: 'var(--primary-light)' }}>
-                        <p className="mb-2 font-bold">CheckCar.App • Powered by Claude & Gemini </p>
-                        <p>Developed by KI ProjexX : Mathias Schulz</p>
+                        <p className="mb-2 font-bold">CheckCar Business Demo • Powered by Gemini AI</p>
+                        <p>Developed by Mathias Schulz</p>
                         <p className="mt-2" style={{ color: 'var(--accent)' }}>
                             🔒 Secure API • BOLD Awards 2025 Submission
                         </p>
@@ -1145,5 +1146,3 @@
     </script>
 </body>
 </html>
-
-
