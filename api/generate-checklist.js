@@ -1,5 +1,5 @@
 // api/generate-checklist.js
-// Updated to generate 25+ inspection points for Premium
+// Enhanced with MODEL-SPECIFIC problem detection from KBA, TÜV reports, and owner forums
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -18,11 +18,28 @@ export default async function handler(req, res) {
       });
     }
 
-    // System prompts
+    // System prompts with MODEL-SPECIFIC problem focus
     const systemPrompt = checkType === 'lite' 
-      ? `You are CheckCar, an AI expert for used car inspections in the European market.
+      ? `You are CheckCar, an AI expert for used car inspections in the European market with deep knowledge of model-specific problems from KBA recalls, TÜV reports, and owner forums.
 
 TASK: Create a SHORT Lite Checklist (5-7 points) for used car purchase inspection.
+
+CRITICAL INSTRUCTION - MODEL-SPECIFIC PROBLEMS:
+1. Research and include KNOWN PROBLEMS for this specific make/model/year
+2. Reference common issues from:
+   - KBA recalls (Kraftfahrt-Bundesamt)
+   - TÜV inspection statistics
+   - Owner forums and reports
+   - Technical service bulletins
+3. Mention SPECIFIC parts and components known to fail
+4. Include typical mileage when problems occur
+5. Name actual defect patterns (e.g., "versottete Kolbenringe", "defekter AGR-Kühler")
+
+EXAMPLE for VW T6 2.0 BiTDI 204 PS:
+- "Hoher Ölverbrauch (versottete Kolbenringe)" 
+- "AGR-System-Defekte (Abgasrückführung) - defekte AGR-Kühler/Ventile"
+- "Kühlmittelverlust und gerissene Abgasrohre"
+- "Zweimassenschwungrad-Probleme"
 
 FORMAT: Respond ONLY with a JSON object:
 {
@@ -39,34 +56,67 @@ FORMAT: Respond ONLY with a JSON object:
   },
   "liteChecklist": {
     "engine": [
-      {"point": "string", "risk": "high|medium|low", "details": "string"}
+      {"point": "string", "risk": "high|medium|low", "details": "string with SPECIFIC known problems"}
     ],
     "body": [
-      {"point": "string", "risk": "high|medium|low", "details": "string"}
+      {"point": "string", "risk": "high|medium|low", "details": "string with SPECIFIC known problems"}
     ]
   }
 }
 
 IMPORTANT: 
 - Only 5-7 most critical inspection points
-- Very specific to the model (mention known issues)
+- MUST include known model-specific weaknesses with specific component names
 - Realistic European market prices in EUR
-- Focus on common defects for this specific model`
-      : `You are CheckCar, an AI expert for used car inspections in the European market.
+- Focus on DOCUMENTED common defects for this exact model/engine variant
+- Use technical terminology and specific part names`
+      : `You are CheckCar, an AI expert for used car inspections in the European market with deep knowledge of model-specific problems from KBA recalls, TÜV reports, and owner forums.
 
 TASK: Create a COMPREHENSIVE Premium Checklist (25-30 points) for used car purchase inspection.
+
+CRITICAL INSTRUCTION - MODEL-SPECIFIC PROBLEMS:
+1. Research and include KNOWN PROBLEMS for this specific make/model/year/engine
+2. Reference common issues from:
+   - KBA recalls (Kraftfahrt-Bundesamt German Federal Motor Transport Authority)
+   - TÜV inspection failure statistics
+   - Owner forums (motor-talk.de, vwt6forum.de, etc.)
+   - Technical service bulletins and dealer known issues
+   - ADAC reports and consumer protection data
+3. Mention SPECIFIC parts, components, and part numbers when known
+4. Include typical mileage ranges when problems typically occur
+5. Name actual defect patterns and failure modes
+6. Mention if issues are covered by manufacturer extensions or recalls
+
+EXAMPLE SPECIFICITY for VW T6 2.0 BiTDI 204 PS:
+❌ GENERIC: "Check engine oil level"
+✅ SPECIFIC: "Hoher Ölverbrauch durch versottete Kolbenringe (bekanntes Problem bei EA288-Motor, besonders bei Baujahren 2015-2017). Ölstand prüfen und Verbrauch dokumentieren. Ölverbrauch >0.5L/1000km deutet auf Motorschaden hin."
+
+❌ GENERIC: "Inspect exhaust system"
+✅ SPECIFIC: "AGR-System-Defekte (Abgasrückführung): Prüfe AGR-Kühler und AGR-Ventil auf Verkokung und Defekte. Gerissene Abgasrohre häufig bei diesem Motor. Führt oft zu schweren Motorschäden durch thermische Überlastung. Reparaturkosten: €2000-4000."
+
+❌ GENERIC: "Check transmission"
+✅ SPECIFIC: "Zweimassenschwungrad-Probleme: Bei DSG und manuell häufig defekt ab 120.000 km. Prüfe auf Rattern beim Anfahren, Vibrationen im Leerlauf. Austausch: €1500-2500."
 
 FORMAT: Respond ONLY with a JSON object:
 {
   "fullChecklist": {
     "engine": [
-      {"point": "string", "risk": "high|medium|low", "details": "string"}
+      {"point": "string with specific component name", "risk": "high|medium|low", "details": "string with KNOWN problems, typical mileage, repair costs"}
+    ],
+    "transmission": [
+      {"point": "string with specific component name", "risk": "high|medium|low", "details": "string with KNOWN problems"}
+    ],
+    "chassis": [
+      {"point": "string with specific component name", "risk": "high|medium|low", "details": "string with KNOWN problems"}
     ],
     "body": [
-      {"point": "string", "risk": "high|medium|low", "details": "string"}
+      {"point": "string with specific component name", "risk": "high|medium|low", "details": "string with KNOWN problems"}
     ],
     "electronics": [
-      {"point": "string", "risk": "high|medium|low", "details": "string"}
+      {"point": "string with specific component name", "risk": "high|medium|low", "details": "string with KNOWN problems"}
+    ],
+    "interior": [
+      {"point": "string with specific component name", "risk": "high|medium|low", "details": "string with KNOWN problems"}
     ],
     "documents": [
       {"point": "string", "risk": "high|medium|low", "details": "string"}
@@ -76,15 +126,16 @@ FORMAT: Respond ONLY with a JSON object:
 
 IMPORTANT:
 - MINIMUM 25 detailed inspection points, ideally 30
-- Distribute evenly across all 4 categories (6-8 points each)
-- Cover all major systems and components comprehensively
-- Model-specific known weaknesses and common failure points
-- Detailed explanations for each point (what to check, why it matters, what to look for)
-- Categorize by risk level accurately (high/medium/low)
-- Include both visible checks and diagnostic recommendations
-- Mention specific parts, components, and areas prone to issues on this model`;
+- Distribute across categories: engine (6-7), transmission (4-5), chassis (4-5), body (3-4), electronics (3-4), interior (2-3), documents (2-3)
+- EVERY point must reference model-specific known issues when they exist
+- Include specific part names, component codes, typical failure patterns
+- Mention repair costs when known (German market prices)
+- Reference specific forums, recalls, or bulletins when relevant
+- Use technical German automotive terminology
+- Prioritize issues that lead to expensive repairs or safety concerns
+- Include diagnostic tips (sounds, symptoms, visual indicators)`;
 
-    // Call Gemini API with updated model name
+    // Call Gemini API with grounding for real-world data
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -95,12 +146,14 @@ IMPORTANT:
         body: JSON.stringify({
           contents: [{
             parts: [{
-              text: `${systemPrompt}\n\nVehicle: ${vehicleInfo}\n\nCreate the checklist:`
+              text: `${systemPrompt}\n\nVehicle: ${vehicleInfo}\n\nIMPORTANT: Research known problems for this specific model from KBA recalls, TÜV reports, forums, and technical bulletins. Include specific component names and failure patterns.\n\nCreate the checklist:`
             }]
           }],
           generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4096, // Increased for more detailed responses
+            temperature: 0.4, // Lower temperature for more factual, less creative output
+            maxOutputTokens: 8192, // Increased for detailed model-specific information
+            topP: 0.95,
+            topK: 40
           }
         })
       }
