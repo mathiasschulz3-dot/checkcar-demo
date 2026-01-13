@@ -4,15 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CheckCar - AI-Powered Used Car Inspection</title>
-<!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-DEINE-MESS-ID"></script>
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FRS3EVG958"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-FRS3EVG958');
+      
+      // Custom Event Tracking Functions
+      function trackInputMode(mode) {
+          gtag('event', 'select_input_mode', {
+              'input_method': mode,
+              'event_category': 'user_interaction',
+              'event_label': mode
+          });
+      }
+      
+      function trackQuickStart(example) {
+          gtag('event', 'use_quick_start', {
+              'event_category': 'user_interaction',
+              'event_label': example,
+              'value': 1
+          });
+      }
+      
+      function trackLiteGeneration(vehicleInfo) {
+          gtag('event', 'generate_lite_check', {
+              'event_category': 'checklist_generation',
+              'event_label': 'lite',
+              'value': 0
+          });
+      }
+      
+      function trackPremiumClick() {
+          gtag('event', 'click_premium_upgrade', {
+              'event_category': 'conversion',
+              'event_label': 'premium_modal_opened'
+          });
+      }
+      
+      function trackPremiumUnlock() {
+          gtag('event', 'unlock_premium', {
+              'event_category': 'conversion',
+              'event_label': 'premium_demo',
+              'value': 2.50
+          });
+      }
+      
+      function trackCompletion() {
+          gtag('event', 'complete_inspection', {
+              'event_category': 'user_engagement',
+              'event_label': '100_percent_checked'
+          });
+      }
+      
+      function trackLanguageSwitch(language) {
+          gtag('event', 'switch_language', {
+              'event_category': 'user_preference',
+              'event_label': language
+          });
+      }
     </script>
     <!-- End Google Analytics -->
+    
     <link rel="icon" type="image/png" href="/CheckCar App Logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -125,7 +181,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useRef } = React;
+        const { useState, useRef, useEffect } = React;
 
         // Translations
         const translations = {
@@ -237,7 +293,7 @@
             }
         };
 
-        // SVG Icons
+        // SVG Icons (keeping all your existing icons)
         const CameraIcon = () => (
             <svg className="w-12 h-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
@@ -308,6 +364,14 @@
             const [isProcessingPayment, setIsProcessingPayment] = useState(false);
             const [checkedItems, setCheckedItems] = useState({});
 
+            // Track language switches
+            const handleLanguageSwitch = (newLang) => {
+                setLang(newLang);
+                if (typeof trackLanguageSwitch !== 'undefined') {
+                    trackLanguageSwitch(newLang);
+                }
+            };
+
             const resetToHome = () => {
                 setInputMode('select');
                 setVehicleInfo('');
@@ -319,8 +383,13 @@
                 window.scrollTo(0, 0);
             };
 
-            // Handle Photo Upload
+            // Handle Photo Upload with tracking
             const handlePhotoUpload = async (file) => {
+                // Track input mode selection
+                if (typeof trackInputMode !== 'undefined') {
+                    trackInputMode('photo');
+                }
+                
                 setUploadedFile(file);
                 setLoading(true);
                 setError(null);
@@ -352,8 +421,13 @@
                 }
             };
 
-            // Handle Document Scan
+            // Handle Document Scan with tracking
             const handleDocumentScan = async (file) => {
+                // Track input mode selection
+                if (typeof trackInputMode !== 'undefined') {
+                    trackInputMode('document');
+                }
+                
                 setUploadedFile(file);
                 setLoading(true);
                 setError(null);
@@ -385,9 +459,13 @@
                 }
             };
 
-            // Voice Input
+            // Voice Input with tracking
             const startVoiceRecording = () => {
-                // Check if speech recognition is supported
+                // Track input mode selection
+                if (typeof trackInputMode !== 'undefined') {
+                    trackInputMode('voice');
+                }
+                
                 if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                     setError(lang === 'de' 
                         ? 'Spracheingabe wird in diesem Browser nicht unterstützt. Bitte verwende Chrome, Safari oder Edge.'
@@ -395,7 +473,6 @@
                     return;
                 }
 
-                // Check if HTTPS (required for voice input on mobile)
                 if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
                     setError(lang === 'de'
                         ? 'Spracheingabe erfordert eine sichere Verbindung (HTTPS).'
@@ -409,8 +486,6 @@
                     recognitionRef.current.lang = lang === 'de' ? 'de-DE' : 'en-US';
                     recognitionRef.current.continuous = false;
                     recognitionRef.current.interimResults = false;
-                    
-                    // Mobile-specific settings
                     recognitionRef.current.maxAlternatives = 1;
 
                     recognitionRef.current.onstart = () => {
@@ -429,7 +504,6 @@
                         console.error('Speech recognition error:', event.error, event);
                         setIsRecording(false);
                         
-                        // Better error messages based on error type
                         let errorMessage = '';
                         switch (event.error) {
                             case 'not-allowed':
@@ -449,7 +523,6 @@
                                     : '📡 Network error. Check your internet connection.';
                                 break;
                             case 'aborted':
-                                // User stopped it - don't show error
                                 return;
                             case 'audio-capture':
                                 errorMessage = lang === 'de'
@@ -490,11 +563,16 @@
                 }
             };
 
-            // Generate Checklist
+            // Generate Checklist with tracking
             const handleGenerateLite = async () => {
                 if (!vehicleInfo.trim()) {
                     setError('Please enter vehicle information');
                     return;
+                }
+
+                // Track lite generation
+                if (typeof trackLiteGeneration !== 'undefined') {
+                    trackLiteGeneration(vehicleInfo);
                 }
 
                 setLoading(true);
@@ -503,7 +581,6 @@
                 setPremiumChecklist(null);
                 setCheckedItems({});
 
-                // Add language instruction to vehicle info
                 const languageInstruction = lang === 'de' 
                     ? ' [WICHTIG: Generiere die gesamte Checkliste auf DEUTSCH. Alle Kategorien, Prüfpunkte und Details müssen auf Deutsch sein.]'
                     : ' [IMPORTANT: Generate the entire checklist in ENGLISH. All categories, inspection points and details must be in English.]';
@@ -528,15 +605,19 @@
                 }
             };
 
-            // Premium Upgrade
+            // Premium Upgrade with tracking
             const handlePremiumUpgrade = async () => {
+                // Track premium unlock
+                if (typeof trackPremiumUnlock !== 'undefined') {
+                    trackPremiumUnlock();
+                }
+                
                 setIsProcessingPayment(true);
                 setError(null);
                 
                 try {
                     await new Promise(resolve => setTimeout(resolve, 1500));
                     
-                    // Add language instruction to vehicle info
                     const languageInstruction = lang === 'de' 
                         ? ' [WICHTIG: Generiere die gesamte Checkliste auf DEUTSCH. Alle Kategorien, Prüfpunkte und Details müssen auf Deutsch sein.]'
                         : ' [IMPORTANT: Generate the entire checklist in ENGLISH. All categories, inspection points and details must be in English.]';
@@ -571,6 +652,20 @@
                     [itemId]: !prev[itemId]
                 }));
             };
+
+            // Track completion when 100% checked
+            useEffect(() => {
+                if (premiumChecklist) {
+                    const totalItems = Object.values(premiumChecklist.fullChecklist || {}).reduce((sum, items) => sum + items.length, 0);
+                    const checkedCount = Object.values(checkedItems).filter(Boolean).length;
+                    
+                    if (totalItems > 0 && checkedCount === totalItems) {
+                        if (typeof trackCompletion !== 'undefined') {
+                            trackCompletion();
+                        }
+                    }
+                }
+            }, [checkedItems, premiumChecklist]);
 
             const getRiskColor = (risk) => {
                 switch (risk) {
@@ -613,10 +708,10 @@
                     <div className="max-w-4xl mx-auto">
                         {/* Header with Language Switcher */}
                         <div className="text-center mb-12 animate-slide-up">
-                            {/* Language Switcher - Mobile Friendly */}
+                            {/* Language Switcher */}
                             <div className="flex justify-end mb-4 gap-3 mono text-sm font-bold">
                                 <button 
-                                    onClick={() => setLang('de')}
+                                    onClick={() => handleLanguageSwitch('de')}
                                     className={`lang-btn ${lang === 'de' ? 'active' : ''}`}
                                     style={{ color: 'var(--accent)' }}
                                 >
@@ -624,7 +719,7 @@
                                 </button>
                                 <span style={{ color: 'var(--accent)' }}>|</span>
                                 <button 
-                                    onClick={() => setLang('en')}
+                                    onClick={() => handleLanguageSwitch('en')}
                                     className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
                                     style={{ color: 'var(--accent)' }}
                                 >
@@ -645,7 +740,7 @@
                                 {t.modes}
                             </p>
                             
-                            {/* New Check Button (Header) */}
+                            {/* New Check Button */}
                             {(liteChecklist || premiumChecklist) && (
                                 <button
                                     onClick={resetToHome}
@@ -732,7 +827,12 @@
                                     </button>
 
                                     <button
-                                        onClick={() => setInputMode('text')}
+                                        onClick={() => {
+                                            setInputMode('text');
+                                            if (typeof trackInputMode !== 'undefined') {
+                                                trackInputMode('text');
+                                            }
+                                        }}
                                         className="card-hover glass rounded-2xl p-8 text-left transition-all"
                                         style={{ 
                                             backgroundColor: 'var(--surface-elevated)',
@@ -779,6 +879,7 @@
                                     </button>
                                 </div>
 
+                                {/* Quick Start Examples with tracking */}
                                 <div className="glass rounded-xl p-6" style={{ backgroundColor: 'var(--surface-elevated)' }}>
                                     <p className="text-sm font-bold mb-4 mono" style={{ color: 'var(--accent)' }}>
                                         💡 {t.examples} <span className="text-xs opacity-70">({lang === 'de' ? 'Klicken zum Ausfüllen' : 'Click to use'})</span>
@@ -795,6 +896,9 @@
                                                 onClick={() => {
                                                     setVehicleInfo(example);
                                                     setInputMode('text');
+                                                    if (typeof trackQuickStart !== 'undefined') {
+                                                        trackQuickStart(example);
+                                                    }
                                                 }}
                                                 className="text-left px-4 py-3 rounded-lg text-sm transition-all hover:bg-white hover:shadow-md border-2 border-transparent hover:border-red-600 hover:scale-105"
                                                 style={{ 
@@ -1052,7 +1156,12 @@
                                         </ul>
                                     </div>
                                     <button
-                                        onClick={() => setShowPaymentModal(true)}
+                                        onClick={() => {
+                                            setShowPaymentModal(true);
+                                            if (typeof trackPremiumClick !== 'undefined') {
+                                                trackPremiumClick();
+                                            }
+                                        }}
                                         className="w-full py-4 rounded-xl font-bold text-xl text-white transition-all hover:opacity-90"
                                         style={{ backgroundColor: 'var(--accent)' }}
                                     >
@@ -1065,7 +1174,7 @@
                             </div>
                         )}
 
-                        {/* PREMIUM CHECKLIST WITH STICKY PROGRESS */}
+                        {/* PREMIUM CHECKLIST WITH STICKY PROGRESS - keeping your existing implementation */}
                         {premiumChecklist && (
                             <div className="space-y-6 animate-slide-up">
                                 <div className="glass rounded-2xl p-8 border-2" 
@@ -1174,31 +1283,29 @@
                                     </div>
                                 ))}
 
-                                {/* Completion + New Check Button */}
+                                {/* Completion */}
                                 {(() => {
                                     const totalItems = Object.values(premiumChecklist.fullChecklist || {}).reduce((sum, items) => sum + items.length, 0);
                                     const checkedCount = Object.values(checkedItems).filter(Boolean).length;
                                     if (totalItems > 0 && checkedCount === totalItems) {
                                         return (
-                                            <>
-                                                <div className="glass rounded-2xl p-10 text-center border-2" 
-                                                     style={{ backgroundColor: '#ECFDF5', borderColor: 'var(--success)' }}>
-                                                    <span className="text-6xl mb-4 block">🎉</span>
-                                                    <h3 className="text-3xl font-bold mb-3" style={{ color: 'var(--primary)' }}>
-                                                        {t.inspectionComplete}
-                                                    </h3>
-                                                    <p className="text-lg mb-6" style={{ color: 'var(--primary-light)' }}>
-                                                        {t.allChecked}
-                                                    </p>
-                                                    <button
-                                                        onClick={resetToHome}
-                                                        className="px-8 py-4 rounded-xl font-bold text-xl text-white transition-all hover:opacity-90"
-                                                        style={{ backgroundColor: 'var(--accent)' }}
-                                                    >
-                                                        {t.newCheck}
-                                                    </button>
-                                                </div>
-                                            </>
+                                            <div className="glass rounded-2xl p-10 text-center border-2" 
+                                                 style={{ backgroundColor: '#ECFDF5', borderColor: 'var(--success)' }}>
+                                                <span className="text-6xl mb-4 block">🎉</span>
+                                                <h3 className="text-3xl font-bold mb-3" style={{ color: 'var(--primary)' }}>
+                                                    {t.inspectionComplete}
+                                                </h3>
+                                                <p className="text-lg mb-6" style={{ color: 'var(--primary-light)' }}>
+                                                    {t.allChecked}
+                                                </p>
+                                                <button
+                                                    onClick={resetToHome}
+                                                    className="px-8 py-4 rounded-xl font-bold text-xl text-white transition-all hover:opacity-90"
+                                                    style={{ backgroundColor: 'var(--accent)' }}
+                                                >
+                                                    {t.newCheck}
+                                                </button>
+                                            </div>
                                         );
                                     }
                                     return null;
@@ -1287,8 +1394,8 @@
 
                     {/* Footer */}
                     <div className="max-w-4xl mx-auto mt-16 text-center text-sm mono" style={{ color: 'var(--primary-light)' }}>
-                        <p className="mb-2 font-bold">CheckCar.App Demo • Powered by Claude & Gemini AI</p>
-                        <p>Developed by ki-projexx.de Mathias Schulz</p>
+                        <p className="mb-2 font-bold">CheckCar.App • Powered by Claude & Gemini AI</p>
+                        <p>Developed by KI-ProjexX • Mathias Schulz</p>
                         <p className="mt-2" style={{ color: 'var(--accent)' }}>
                             🔒 Secure API • BOLD Awards 2025 Submission
                         </p>
@@ -1301,4 +1408,3 @@
     </script>
 </body>
 </html>
-
