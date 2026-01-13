@@ -1049,6 +1049,9 @@
                                     >
                                         {t.upgradeBtn}
                                     </button>
+                                    <p className="text-center text-sm mt-3 font-bold" style={{ color: 'var(--success)' }}>
+                                        ✅ {lang === 'de' ? 'Demo-Modus • Keine Abbuchung' : 'Demo Mode • No Charge'}
+                                    </p>
                                 </div>
                             </div>
                         )}
@@ -1200,9 +1203,22 @@
                                 <div className="glass rounded-3xl max-w-md w-full p-8" style={{ backgroundColor: 'var(--surface-elevated)' }}>
                                     {!isProcessingPayment ? (
                                         <>
-                                            <h2 className="text-3xl font-bold mb-6" style={{ color: 'var(--primary)' }}>
+                                            <h2 className="text-3xl font-bold mb-4" style={{ color: 'var(--primary)' }}>
                                                 {t.upgradeToPremium}
                                             </h2>
+                                            
+                                            {/* Demo Mode Notice */}
+                                            <div className="mb-6 p-4 rounded-xl border-2" style={{ backgroundColor: '#F0FDF4', borderColor: '#10B981' }}>
+                                                <p className="font-bold text-center" style={{ color: '#059669' }}>
+                                                    ✅ {lang === 'de' ? 'DEMO-MODUS • KEINE ECHTE ZAHLUNG' : 'DEMO MODE • NO REAL PAYMENT'}
+                                                </p>
+                                                <p className="text-xs text-center mt-2" style={{ color: '#059669' }}>
+                                                    {lang === 'de' 
+                                                        ? 'Dies ist eine Demo. Es wird kein Geld abgebucht. Der Premium Check wird direkt freigeschaltet.'
+                                                        : 'This is a demo. No money will be charged. Premium check will be unlocked immediately.'}
+                                                </p>
+                                            </div>
+                                            
                                             <div className="mb-8">
                                                 <div className="glass rounded-xl p-6 mb-6" style={{ backgroundColor: '#FEF2F2' }}>
                                                     <p className="font-bold mb-3 mono text-sm" style={{ color: 'var(--accent)' }}>
@@ -1217,8 +1233,12 @@
                                                     </ul>
                                                 </div>
                                                 <div className="text-center">
-                                                    <p className="text-4xl font-bold" style={{ color: 'var(--primary)' }}>€2.50</p>
-                                                    <p className="text-sm" style={{ color: 'var(--primary-light)' }}>{t.oneTime}</p>
+                                                    <p className="text-4xl font-bold" style={{ color: 'var(--primary)' }}>
+                                                        <span className="line-through opacity-40">€2.50</span>
+                                                    </p>
+                                                    <p className="text-2xl font-bold mt-2" style={{ color: '#10B981' }}>
+                                                        {lang === 'de' ? 'KOSTENLOS (Demo)' : 'FREE (Demo)'}
+                                                    </p>
                                                 </div>
                                             </div>
                                             
@@ -1233,18 +1253,18 @@
                                                 <button
                                                     onClick={handlePremiumUpgrade}
                                                     className="flex-1 px-6 py-3 rounded-xl font-bold text-white hover:opacity-90"
-                                                    style={{ backgroundColor: 'var(--accent)' }}
+                                                    style={{ backgroundColor: '#10B981' }}
                                                 >
-                                                    {t.payUnlock}
+                                                    {lang === 'de' ? '✨ Premium freischalten (Demo)' : '✨ Unlock Premium (Demo)'}
                                                 </button>
                                             </div>
                                         </>
                                     ) : (
                                         <div className="text-center py-10">
                                             <div className="animate-spin h-16 w-16 mx-auto mb-6 border-4 rounded-full" 
-                                                 style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}></div>
+                                                 style={{ borderColor: '#10B981', borderTopColor: 'transparent' }}></div>
                                             <h3 className="text-2xl font-bold mb-3" style={{ color: 'var(--primary)' }}>
-                                                {t.processingPayment}
+                                                {lang === 'de' ? '✨ Premium wird freigeschaltet...' : '✨ Unlocking Premium...'}
                                             </h3>
                                             <p style={{ color: 'var(--primary-light)' }}>
                                                 {t.generatingPremium}
@@ -1259,7 +1279,7 @@
                     {/* Footer */}
                     <div className="max-w-4xl mx-auto mt-16 text-center text-sm mono" style={{ color: 'var(--primary-light)' }}>
                         <p className="mb-2 font-bold">CheckCar.App Demo • Powered by Claude & Gemini AI</p>
-                        <p>Developed by KI ProjexX Mathias Schulz</p>
+                        <p>Developed by ki-projexx.de Mathias Schulz</p>
                         <p className="mt-2" style={{ color: 'var(--accent)' }}>
                             🔒 Secure API • BOLD Awards 2025 Submission
                         </p>
